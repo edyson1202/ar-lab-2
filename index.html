@@ -116,6 +116,8 @@ const jet = document.getElementById('jet');
 const btnColor = document.getElementById('toggle-color');
 const backgroundMusic = document.getElementById('background-music');
 
+let planeAppeared = false; // track if plane has been scanned at least once
+
 backgroundMusic.volume = 0.5;
 function playMusic() { backgroundMusic.play().catch(err => console.log('Music error:', err)); }
 function stopMusic() { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
@@ -155,6 +157,7 @@ const nftFieldMarker = document.querySelector('a-nft[url="ar-lab-2/assets/patter
 nftFieldMarker.addEventListener('markerFound', () => {
     console.log('NFT field marker detected! Plane appears!');
     plane.setAttribute('visible', 'true');
+    planeAppeared = true; // mark that plane has appeared
     playMusic();
 });
 nftFieldMarker.addEventListener('markerLost', () => {
@@ -166,9 +169,13 @@ nftFieldMarker.addEventListener('markerLost', () => {
 // Jet NFT
 const nftJetMarker = document.querySelector('a-nft[url="ar-lab-2/assets/patterns/marker"]');
 nftJetMarker.addEventListener('markerFound', () => {
-    console.log('NFT marker detected! Jet appears!');
-    jet.setAttribute('visible', 'true');
-    playMusic();
+    if (planeAppeared) {
+        console.log('NFT marker detected! Jet appears!');
+        jet.setAttribute('visible', 'true');
+        playMusic();
+    } else {
+        console.log('Scan the plane first to unlock the jet!');
+    }
 });
 nftJetMarker.addEventListener('markerLost', () => {
     console.log('NFT marker lost!');
