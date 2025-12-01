@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AR Plane & Jet NFT Dependency</title>
+<script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+<style>
+body { margin:0; padding:0; overflow:hidden; background:transparent !important; }
+a-scene { background:none !important; background-color:transparent !important; }
+canvas { background:transparent !important; background-color:transparent !important; }
+a-scene canvas { background:transparent !important; }
+a-sky { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="ui-overlay" style="position: fixed; top: 20px; left: 20px; color: white; font-family: Arial, sans-serif; z-index: 1000; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px;">
+<h3>AR Plane & Jet NFT - Instructions</h3>
+<p>1. Scan the field NFT to make the plane appear</p>
+<p>2. After plane appears, scan the jet NFT to make the jet appear</p>
+<p>3. Tap the plane or jet to change its color</p>
+<button id="toggle-color" style="padding: 10px; margin: 5px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">Change Color</button>
+</div>
+
+<a-scene 
+    embedded 
+    arjs='detectionMode: mono_and_stereo; trackingMethod: best; debugUIEnabled: false;'
+    vr-mode-ui="enabled: false"
+    background="color: transparent; transparent: true"
+    renderer="antialias: true; alpha: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; logarithmicDepthBuffer: true;"
+    fog="type: none"
+    stats="false"
+    inspector="url: false">
+
+    <a-assets>
+        <a-asset-item id="plane-model" src="assets/models/source/plane.glb"></a-asset-item>
+        <a-asset-item id="jet-model" src="assets/models/source/jet.glb"></a-asset-item>
+    </a-assets>
+
+    <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="1 1 0"></a-entity>
+
+    <!-- NFT marker for Plane -->
+    <a-nft 
+        type="nft"
+        url="assets/patterns/field"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5">
+        <a-entity id="plane"
+                  gltf-model="#plane-model"
+                  position="0 0 0"
+                  scale="1 1 1"
+                  visible="false"
+                  animation="property: rotation; to: 0 0 360; loop: true; dur: 15000; easing: linear;">
+        </a-entity>
+    </a-nft>
+
+    <!-- NFT marker for Jet -->
+    <a-nft 
+        type="nft"
+        url="assets/patterns/marker"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5">
+        <a-entity id="jet"
+                  gltf-model="#jet-model"
+                  position="0 0 0"
+                  scale="1 1 1"
+                  visible="false"
+                  animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear;">
+        </a-entity>
+    </a-nft>
+
+    <a-entity camera look-controls="enabled: false" wasd-controls="enabled: false"></a-entity>
+</a-scene>
+
+<audio id="background-music" preload="auto" loop style="display: none;">
+    <source src="assets/sounds/audio.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Background cleanup
+    const removeBackground = () => {
+        const scene = document.querySelector('a-scene');
+        const sky = document.querySelector('a-sky');
+        const canvas = document.querySelector('canvas');
+        if (sky) sky.remove();
+        if (scene) {
+            scene.removeAttribute('background');
+            scene.style.background = 'transparent';
+            scene.style.backgroundColor = 'transparent';
+        }
+        if (canvas) {
+            canvas.style.background = 'transparent';
+            canvas.style.backgroundColor = 'transparent';
+        }
+        const renderer = scene.renderer;
+        if (renderer) {
+            renderer.setClearColor(0x000000, 0);
+            renderer.domElement.style.background = 'transparent';
+        }
+    };
+    setTimeout(removeBackground, 100);
+    setTimeout(removeBackground, 500);
+    setTimeout(removeBackground, 1000);
+    setTimeout(removeBackground, 2000);
+});
+
+const plane = document.getElementById('plane');
+const jet = document.getElementById('jet');
+const btnColor = document.getElementById('toggle-color');
+const backgroundMusic = document.getElementById('background-music');
+
+let planeAppeared = false; // flag to track if plane has appeared
+
+backgroundMusic.volume = 0.5;
+function playMusic() { backgroundMusic.play().catch(err => console.log('Music error:', err)); }
+function stopMusic() { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
+
+function applyRandomColor(model) {
+    const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    model.addEventListener('model-loaded', () => {
+        const mesh = model.getObject3D('mesh');
+        if (mesh) mesh.traverse(child => {
+            if (child.isMesh && child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => { if (m.color) m.color.set(randomColor); });
+                } else { if (child.material.color) child.material.color.set(randomColor); }
+            }
+        });
+    });
+    const mesh = model.getObject3D('mesh');
+    if (mesh) mesh.traverse(child => {
+        if (child.isMesh && child.material) {
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => { if (m.color) m.color.set(randomColor); });
+            } else { if (child.material.color) child.material.color.set(randomColor); }
+        }
+    });
+    console.log(model.id + ' color changed to:', randomColor);
+}
+
+// Button and model click events
+btnColor.addEventListener('click', () => { applyRandomColor(plane); applyRandomColor(jet); });
+plane.addEventListener('click', () => applyRandomColor(plane));
+jet.addEventListener('click', () => {
+    if (planeAppeared) applyRandomColor(jet);
+});
+
+// AR NFT marker events
+const nftFieldMarker = document.querySelector('a-nft[url="assets/patterns/field"]');
+nftFieldMarker.addEventListener('markerFound', () => {
+    console.log('NFT field marker detected! Plane appears!');
+    plane.setAttribute('visible', 'true');
+    planeAppeared = true;
+    playMusic();
+});
+nftFieldMarker.addEventListener('markerLost', () => {
+    console.log('NFT field marker lost!');
+    plane.setAttribute('visible', 'false');
+    stopMusic();
+});
+
+const nftJetMarker = document.querySelector('a-nft[url="assets/patterns/marker"]');
+nftJetMarker.addEventListener('markerFound', () => {
+    if (planeAppeared) {
+        console.log('NFT marker detected! Jet appears!');
+        jet.setAttribute('visible', 'true');
+        playMusic();
+    } else {
+        console.log('Scan the field NFT first to unlock the jet!');
+    }
+});
+nftJetMarker.addEventListener('markerLost', () => {
+    console.log('NFT marker lost!');
+    jet.setAttribute('visible', 'false');
+    stopMusic();
+});
+
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const scene = document.querySelector('a-scene');
+        if (scene && scene.renderer) {
+            scene.renderer.setClearColor(0x000000, 0);
+            scene.renderer.domElement.style.background = 'transparent';
+        }
+        const skyElements = document.querySelectorAll('a-sky, [geometry="primitive: sphere"][material*="shader: sky"]');
+        skyElements.forEach(el => el.remove());
+    }, 2000);
+});
+</script>
+</body>
+</html>
